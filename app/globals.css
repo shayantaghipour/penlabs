@@ -1,0 +1,469 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #090914;
+  --mint: #5eead4;
+  --periwinkle: #8b8cff;
+  --rose: #f9a8d4;
+
+  --text: rgba(255, 255, 255, 0.92);
+  --text-dim: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.16);
+}
+
+html,
+body {
+  color-scheme: dark;
+  color: var(--text);
+  font-family: var(--font-vazir), var(--font-geist-sans), system-ui, sans-serif;
+  overflow: hidden;
+  background:
+    radial-gradient(40% 40% at 18% 15%, rgba(94, 234, 212, 0.38), transparent 70%),
+    radial-gradient(38% 38% at 85% 20%, rgba(139, 140, 255, 0.5), transparent 70%),
+    radial-gradient(45% 45% at 70% 90%, rgba(249, 168, 212, 0.32), transparent 70%),
+    radial-gradient(35% 35% at 10% 85%, rgba(94, 160, 234, 0.3), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* ---------- پس‌زمینه شفق ---------- */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--bg);
+}
+.aurora::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 40% at 18% 15%, rgba(94, 234, 212, 0.38), transparent 70%),
+    radial-gradient(38% 38% at 85% 20%, rgba(139, 140, 255, 0.5), transparent 70%),
+    radial-gradient(45% 45% at 70% 90%, rgba(249, 168, 212, 0.32), transparent 70%),
+    radial-gradient(35% 35% at 10% 85%, rgba(94, 160, 234, 0.3), transparent 70%);
+  animation: drift 28s ease-in-out infinite alternate;
+}
+@keyframes drift {
+  from { transform: translate3d(-3%, -2%, 0) scale(1); }
+  to   { transform: translate3d(3%, 3%, 0) scale(1.12); }
+}
+
+/* ---------- شیشه ---------- */
+.glass {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04));
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.glass-item {
+  border-radius: 20px;
+  border: 1px solid transparent;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.glass-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.glass-item[data-active="true"] {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: border-color 0.2s, background 0.2s;
+}
+.glass-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(139, 140, 255, 0.7);
+}
+
+.btn-accent {
+  border-radius: 999px;
+  color: #0a0a18;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--mint), var(--periwinkle) 60%, var(--rose));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 6px 20px rgba(139, 140, 255, 0.35);
+  transition: transform 0.15s, filter 0.2s;
+}
+.btn-accent:hover { filter: brightness(1.08); }
+.btn-accent:active { transform: scale(0.96); }
+
+.pill {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- اسکرول‌بار ---------- */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+
+/* ---------- ادیتور ---------- */
+.tiptap {
+  outline: none;
+  min-height: 50vh;
+  font-size: 1rem;
+  line-height: 2;
+  color: rgba(255, 255, 255, 0.88);
+}
+.tiptap p,
+.tiptap h1,
+.tiptap h2,
+.tiptap li,
+.tiptap blockquote {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+.tiptap p { margin: 0.3em 0; }
+.tiptap h1 { font-size: 1.9rem; font-weight: 700; margin: 0.9em 0 0.3em; line-height: 1.4; }
+.tiptap h2 { font-size: 1.45rem; font-weight: 700; margin: 0.8em 0 0.3em; line-height: 1.4; }
+.tiptap ul { list-style: disc; padding-inline-start: 1.5rem; }
+.tiptap ol { list-style: decimal; padding-inline-start: 1.5rem; }
+.tiptap blockquote {
+  border-inline-start: 3px solid var(--periwinkle);
+  padding-inline-start: 1rem;
+  margin: 0.8em 0;
+  color: rgba(255, 255, 255, 0.65);
+}
+.tiptap code {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.1em 0.4em;
+  font-size: 0.9em;
+}
+.tiptap pre {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1rem;
+  margin: 0.8em 0;
+  overflow-x: auto;
+  direction: ltr;
+  text-align: left;
+}
+.tiptap pre code { background: none; padding: 0; }
+
+/* چک‌لیست */
+.tiptap ul[data-type="taskList"] { list-style: none; padding-inline-start: 0.25rem; }
+.tiptap ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.6rem; }
+.tiptap ul[data-type="taskList"] li > label { margin-top: 0.15rem; user-select: none; }
+.tiptap ul[data-type="taskList"] li > div { flex: 1; }
+.tiptap ul[data-type="taskList"] input[type="checkbox"] {
+  appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.tiptap ul[data-type="taskList"] input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, var(--mint), var(--periwinkle));
+  border-color: transparent;
+}
+.tiptap ul[data-type="taskList"] input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: #0a0a18;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: rgba(255, 255, 255, 0.25);
+  float: inline-start;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ================= آیکون تغییر تم ================= */
+.theme-sun { display: none; }
+html[data-theme="dark"] .theme-moon { display: none; }
+html[data-theme="dark"] .theme-sun { display: block; }
+
+/* ================= حالت روشن (پیش‌فرض) ================= */
+html:not([data-theme="dark"]) {
+  color-scheme: light;
+
+  --bg: #eef1fb;
+  --mint: #14b8a6;
+  --periwinkle: #6366f1;
+  --rose: #ec4899;
+  --text: rgba(15, 18, 40, 0.9);
+  --text-dim: rgba(15, 18, 40, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.75);
+
+  /* «سفید» تیلویند تو حالت روشن می‌شه رنگ جوهر */
+  --color-white: #0f1228;
+  --color-rose-200: #be123c;
+  --color-rose-300: #e11d48;
+  --color-amber-300: #f59e0b;
+
+  body {
+    color-scheme: light;
+    background:
+      radial-gradient(40% 40% at 18% 15%, rgba(94, 234, 212, 0.5), transparent 70%),
+      radial-gradient(38% 38% at 85% 20%, rgba(139, 140, 255, 0.45), transparent 70%),
+      radial-gradient(45% 45% at 70% 90%, rgba(249, 168, 212, 0.5), transparent 70%),
+      radial-gradient(35% 35% at 10% 85%, rgba(125, 211, 252, 0.45), transparent 70%),
+      var(--bg);
+    background-attachment: fixed;
+  }
+
+  .aurora::before {
+    background:
+      radial-gradient(40% 40% at 18% 15%, rgba(94, 234, 212, 0.5), transparent 70%),
+      radial-gradient(38% 38% at 85% 20%, rgba(139, 140, 255, 0.45), transparent 70%),
+      radial-gradient(45% 45% at 70% 90%, rgba(249, 168, 212, 0.5), transparent 70%),
+      radial-gradient(35% 35% at 10% 85%, rgba(125, 211, 252, 0.45), transparent 70%);
+  }
+
+  * {
+    scrollbar-color: rgba(15, 18, 40, 0.25) transparent;
+  }
+
+  .glass {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.38));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+      0 12px 40px rgba(70, 80, 140, 0.18);
+  }
+
+  .glass-item:hover {
+    background: rgba(255, 255, 255, 0.55);
+  }
+  .glass-item[data-active="true"] {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.95);
+    box-shadow:
+      inset 0 1px 0 #fff,
+      0 4px 14px rgba(70, 80, 140, 0.12);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(15, 18, 40, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(99, 102, 241, 0.7);
+  }
+
+  .pill {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(15, 18, 40, 0.1);
+  }
+
+  .btn-accent {
+    background: linear-gradient(135deg, #2dd4bf, #818cf8 60%, #f472b6);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      0 6px 20px rgba(99, 102, 241, 0.3);
+  }
+
+  /* ادیتور */
+  .tiptap {
+    color: rgba(15, 18, 40, 0.88);
+  }
+  .tiptap blockquote {
+    color: rgba(15, 18, 40, 0.65);
+  }
+  .tiptap code {
+    background: rgba(15, 18, 40, 0.07);
+  }
+  .tiptap pre {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(15, 18, 40, 0.1);
+  }
+  .tiptap ul[data-type="taskList"] input[type="checkbox"]:not(:checked) {
+    border-color: rgba(15, 18, 40, 0.35);
+    background: rgba(255, 255, 255, 0.7);
+  }
+  .tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+    color: rgba(15, 18, 40, 0.4);
+  }
+  .tiptap p.is-editor-empty:first-child::before {
+    color: rgba(15, 18, 40, 0.3);
+  }
+}
+
+/* ---------- منوی شیشه‌ای شفاف ---------- */
+.menu-glass {
+  padding: 8px;
+  background: linear-gradient(135deg, rgba(120, 120, 200, 0.28), rgba(30, 30, 70, 0.42));
+  backdrop-filter: blur(36px) saturate(190%);
+  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 26px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.45);
+}
+html:not([data-theme="dark"]) .menu-glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.38));
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 24px 60px rgba(70, 80, 140, 0.28);
+}
+
+/* ================= ریسپانسیو و لمسی ================= */
+
+/* چیپ‌های بخش‌ها (گوشی و تبلت) */
+.chip {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+.chip[data-active="true"] {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+html:not([data-theme="dark"]) .chip {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(15, 18, 40, 0.1);
+}
+html:not([data-theme="dark"]) .chip[data-active="true"] {
+  background: #fff;
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+/* اسکرول بدون نوار */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* دکمه‌هایی که فقط با hover دیده می‌شن؛ روی لمسی همیشه دیده می‌شن */
+.row-action {
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.group:hover .row-action,
+.row-action:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .row-action { opacity: 1; }
+}
+
+/* گوشی */
+@media (max-width: 767px) {
+  /* فونت زیر ۱۶px باعث زوم خودکار iOS موقع فوکوس روی input می‌شه */
+  input,
+  textarea {
+    font-size: 16px;
+  }
+  /* بلور سبک‌تر برای روان‌تر بودن روی گوشی */
+  .glass {
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border-radius: 22px;
+  }
+}
+
+/* ================= لنز شیشه‌ای تب‌ها ================= */
+.glass-tabs {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.glass-tabs [data-tab-key] {
+  cursor: pointer;
+}
+
+.tab-item {
+  border-radius: var(--tab-radius, 20px);
+  transition: background 0.2s;
+  outline: none;
+}
+.tab-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.tab-item:focus-visible {
+  box-shadow: 0 0 0 2px rgba(139, 140, 255, 0.7);
+}
+
+.glass-lens {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: var(--tab-radius, 20px);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -10px 18px rgba(255, 255, 255, 0.05),
+    0 8px 22px rgba(0, 0, 0, 0.25);
+  scale: 1;
+  will-change: transform;
+}
+.glass-lens[data-animate="true"] {
+  transition:
+    transform 0.42s cubic-bezier(0.34, 1.45, 0.5, 1),
+    width 0.3s ease,
+    height 0.3s ease,
+    scale 0.3s cubic-bezier(0.34, 1.45, 0.5, 1),
+    opacity 0.2s;
+}
+/* موقع کشیدن: بزرگ‌تر و روشن‌تر، و نرم دنبال انگشت */
+.glass-lens[data-dragging="true"] {
+  scale: 1.07;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -12px 22px rgba(255, 255, 255, 0.08),
+    0 16px 36px rgba(0, 0, 0, 0.38);
+  transition:
+    transform 0.08s ease-out,
+    width 0.16s ease,
+    height 0.16s ease,
+    scale 0.25s cubic-bezier(0.34, 1.45, 0.5, 1),
+    opacity 0.2s;
+}
+
+/* حالت روشن */
+html:not([data-theme="dark"]) .tab-item:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+html:not([data-theme="dark"]) .glass-lens {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6));
+  border-color: #fff;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 6px 18px rgba(70, 80, 140, 0.22);
+}
+html:not([data-theme="dark"]) .glass-lens[data-dragging="true"] {
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 16px 36px rgba(70, 80, 140, 0.34);
+}
