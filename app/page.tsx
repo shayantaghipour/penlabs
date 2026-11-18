@@ -61,11 +61,12 @@ export default function Home() {
         }
         setSections(secs as Section[]);
         setNotes(nts as Note[]);
-        if (secs.length > 0) {
-          setActiveSectionId(secs[0].id);
+        const firstLive = (secs as Section[]).find((s) => s.deleted_at === null);
+        if (firstLive) {
+          setActiveSectionId(firstLive.id);
           setActiveId(
-            (nts as Note[]).find((n) => n.section_id === secs[0].id && n.deleted_at === null)?.id ??
-              null
+            (nts as Note[]).find((n) => n.section_id === firstLive.id && n.deleted_at === null)
+              ?.id ?? null
           );
         }
       })
@@ -91,12 +92,21 @@ export default function Home() {
 
   /* ---------- مشتق‌ها ---------- */
 
-  const liveNotes = notes.filter((n) => n.deleted_at === null);
-  const trashNotes = notes
-    .filter((n) => n.deleted_at !== null)
+  const liveSections = sections.filter((s) => s.deleted_at === null);
+  const trashSections = sections
+    .filter((s) => s.deleted_at !== null)
     .sort((a, b) => (b.deleted_at ?? 0) - (a.deleted_at ?? 0));
+  const liveSectionIds = new Set(liveSections.map((s) => s.id));
+
+  const liveNotes = notes.filter((n) => n.deleted_at === null);
+  // صفحه‌های بخش‌های حذف‌شده جدا نشون داده نمی‌شن؛ با خود بخش برمی‌گردن یا پاک می‌شن
+  const trashNotes = notes
+    .filter((n) => n.deleted_at !== null && liveSectionIds.has(n.section_id))
+    .sort((a, b) => (b.deleted_at ?? 0) - (a.deleted_at ?? 0));
+  const trashCount = trashSections.length + trashNotes.length;
+
   const sectionNotes = liveNotes.filter((n) => n.section_id === activeSectionId);
-  const activeSection = sections.find((s) => s.id === activeSectionId) ?? null;
+  const activeSection = liveSections.find((s) => s.id === activeSectionId) ?? null;
   const active = view === "notes" ? (sectionNotes.find((n) => n.id === activeId) ?? null) : null;
 
   /* ---------- حساب کاربری ---------- */
@@ -127,7 +137,7 @@ export default function Home() {
   async function createSection() {
     const name = prompt("Section name:")?.trim();
     if (!name) return;
-    const color = PALETTE[sections.length % PALETTE.length];
+    const color = PALETTE[liveSections.length % PALETTE.length];
     const res = await fetch("/api/sections", {
       method: "POST",
       headers: JSON_HEADERS,
@@ -154,34 +164,63 @@ export default function Home() {
     setSections((prev) => prev.map((s) => (s.id === section.id ? { ...s, name } : s)));
   }
 
+  // حذف بخش = رفتن به سطل زباله (با همه صفحه‌هاش)
   async function deleteSection(section: Section) {
-    if (sections.length <= 1) {
+    if (liveSections.length <= 1) {
       alert("You can't delete the last section.");
       return;
     }
+    const count = liveNotes.filter((n) => n.section_id === section.id).length;
+    const msg =
+      count > 0
+        ? `Move "${section.name}" and its ${count} page(s) to the trash?`
+        : `Move "${section.name}" to the trash?`;
+    if (!confirm(msg)) return;
+
+    const res = await fetch(`/api/sections/${section.id}`, {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ trashed: true }),
+    });
+    if (!res.ok) return;
+
+    setSections((prev) =>
+      prev.map((s) => (s.id === section.id ? { ...s, deleted_at: Date.now() } : s))
+    );
+
+    if (activeSectionId === section.id) {
+      const next = liveSections.find((s) => s.id !== section.id);
+      if (next) {
+        setActiveSectionId(next.id);
+        setActiveId(liveNotes.find((n) => n.section_id === next.id)?.id ?? null);
+      }
+      setMobileView("list");
+    }
+  }
+
+  async function restoreSection(section: Section) {
+    const res = await fetch(`/api/sections/${section.id}`, {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ trashed: false }),
+    });
+    if (!res.ok) return;
+    setSections((prev) => prev.map((s) => (s.id === section.id ? { ...s, deleted_at: null } : s)));
+  }
+
+  async function deleteSectionForever(section: Section) {
     const count = notes.filter((n) => n.section_id === section.id).length;
     const msg =
       count > 0
-        ? `Delete "${section.name}" and its ${count} page(s) permanently?`
-        : `Delete "${section.name}"?`;
+        ? `Delete "${section.name}" and its ${count} page(s) permanently? This can't be undone.`
+        : `Delete "${section.name}" permanently? This can't be undone.`;
     if (!confirm(msg)) return;
 
     const res = await fetch(`/api/sections/${section.id}`, { method: "DELETE" });
     if (!res.ok) return;
 
-    const remainingSections = sections.filter((s) => s.id !== section.id);
-    const remainingNotes = notes.filter((n) => n.section_id !== section.id);
-    setSections(remainingSections);
-    setNotes(remainingNotes);
-
-    if (activeSectionId === section.id) {
-      const next = remainingSections[0];
-      setActiveSectionId(next.id);
-      setActiveId(
-        remainingNotes.find((n) => n.section_id === next.id && n.deleted_at === null)?.id ?? null
-      );
-      setMobileView("list");
-    }
+    setSections((prev) => prev.filter((s) => s.id !== section.id));
+    setNotes((prev) => prev.filter((n) => n.section_id !== section.id));
   }
 
   /* ---------- صفحه‌ها ---------- */
@@ -276,10 +315,19 @@ export default function Home() {
   }
 
   async function emptyTrash() {
-    if (!confirm(`Delete ${trashNotes.length} page(s) permanently?`)) return;
-    const res = await fetch("/api/notes", { method: "DELETE" });
-    if (!res.ok) return;
-    setNotes((prev) => prev.filter((n) => n.deleted_at === null));
+    if (!confirm(`Delete ${trashCount} item(s) in the trash permanently?`)) return;
+
+    const [notesRes, sectionsRes] = await Promise.all([
+      fetch("/api/notes", { method: "DELETE" }),
+      fetch("/api/sections", { method: "DELETE" }),
+    ]);
+    if (!notesRes.ok || !sectionsRes.ok) return;
+
+    const trashedSectionIds = new Set(trashSections.map((s) => s.id));
+    setSections((prev) => prev.filter((s) => s.deleted_at === null));
+    setNotes((prev) =>
+      prev.filter((n) => n.deleted_at === null && !trashedSectionIds.has(n.section_id))
+    );
   }
 
   return (
@@ -287,9 +335,9 @@ export default function Home() {
       <div className="aurora" />
       <main className="flex h-dvh gap-2 p-2 md:gap-4 md:p-4">
         <SectionsBar
-          sections={sections}
+          sections={liveSections}
           activeId={view === "notes" ? activeSectionId : null}
-          trashCount={trashNotes.length}
+          trashCount={trashCount}
           trashActive={view === "trash"}
           onSelect={selectSection}
           onSelectTrash={selectTrash}
@@ -310,14 +358,17 @@ export default function Home() {
             notes={view === "trash" ? trashNotes : sectionNotes}
             activeId={activeId}
             searchRef={searchRef}
-            sections={sections}
+            sections={liveSections}
+            trashSections={trashSections}
             activeSectionId={activeSectionId}
-            trashCount={trashNotes.length}
+            trashCount={trashCount}
             onSelectSection={selectSection}
             onSelectTrash={selectTrash}
             onCreateSection={createSection}
             onRenameSection={renameSection}
             onDeleteSection={deleteSection}
+            onRestoreSection={restoreSection}
+            onDeleteSectionForever={deleteSectionForever}
             onSelect={openNote}
             onCreate={createNote}
             onTogglePin={togglePin}
@@ -359,7 +410,7 @@ export default function Home() {
               </div>
             ) : view === "trash" ? (
               <div className="flex h-full items-center justify-center px-10 text-center text-white/40">
-                Pages in the trash can&apos;t be edited. Restore a page to keep working on it.
+                Items in the trash can&apos;t be edited. Restore them to keep working.
               </div>
             ) : active ? (
               <NoteEditor

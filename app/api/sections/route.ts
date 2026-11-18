@@ -20,7 +20,7 @@ export async function GET() {
     if (!user) return unauthorized();
 
     const result = await db.execute({
-      sql: "SELECT id, name, color, position FROM sections WHERE user_id = ? ORDER BY position, id",
+      sql: "SELECT id, name, color, position, deleted_at FROM sections WHERE user_id = ? ORDER BY position, id",
       args: [user.id],
     });
     const sections: Section[] = result.rows.map((r) => ({
@@ -28,6 +28,7 @@ export async function GET() {
       name: String(r.name),
       color: String(r.color),
       position: Number(r.position),
+      deleted_at: r.deleted_at === null ? null : Number(r.deleted_at),
     }));
     return NextResponse.json(sections);
   } catch (e) {
@@ -60,9 +61,37 @@ export async function POST(request: Request) {
       args: [name, color, position, Date.now(), user.id],
     });
 
-    const section: Section = { id: Number(result.lastInsertRowid), name, color, position };
+    const section: Section = {
+      id: Number(result.lastInsertRowid),
+      name,
+      color,
+      position,
+      deleted_at: null,
+    };
     return NextResponse.json(section, { status: 201 });
   } catch (e) {
     return fail("POST /api/sections failed:", e);
+  }
+}
+
+// خالی کردن بخش‌های سطل زباله (با همه صفحه‌هاشون)
+export async function DELETE() {
+  try {
+    await initDb();
+    const user = await getCurrentUser();
+    if (!user) return unauthorized();
+
+    await db.execute({
+      sql: `DELETE FROM notes WHERE user_id = ? AND section_id IN
+            (SELECT id FROM sections WHERE user_id = ? AND deleted_at IS NOT NULL)`,
+      args: [user.id, user.id],
+    });
+    await db.execute({
+      sql: "DELETE FROM sections WHERE user_id = ? AND deleted_at IS NOT NULL",
+      args: [user.id],
+    });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return fail("DELETE /api/sections failed:", e);
   }
 }

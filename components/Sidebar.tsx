@@ -14,6 +14,7 @@ type Props = {
   searchRef: RefObject<HTMLInputElement | null>;
   // بخش‌ها (فقط زیر ۱۰۲۴px نشون داده می‌شن)
   sections: Section[];
+  trashSections: Section[];
   activeSectionId: number | null;
   trashCount: number;
   onSelectSection: (id: number) => void;
@@ -21,6 +22,8 @@ type Props = {
   onCreateSection: () => void;
   onRenameSection: (section: Section) => void;
   onDeleteSection: (section: Section) => void;
+  onRestoreSection: (section: Section) => void;
+  onDeleteSectionForever: (section: Section) => void;
   // صفحه‌ها
   onSelect: (id: number) => void;
   onCreate: () => void;
@@ -39,6 +42,7 @@ export default function Sidebar({
   activeId,
   searchRef,
   sections,
+  trashSections,
   activeSectionId,
   trashCount,
   onSelectSection,
@@ -46,6 +50,8 @@ export default function Sidebar({
   onCreateSection,
   onRenameSection,
   onDeleteSection,
+  onRestoreSection,
+  onDeleteSectionForever,
   onSelect,
   onCreate,
   onTogglePin,
@@ -58,14 +64,20 @@ export default function Sidebar({
   const [q, setQ] = useState("");
   const isTrash = mode === "trash";
   const activeSection = sections.find((s) => s.id === activeSectionId) ?? null;
+  const query = q.toLowerCase();
 
   const filtered = notes
-    .filter((n) => (n.title + " " + toPlain(n.content)).toLowerCase().includes(q.toLowerCase()))
+    .filter((n) => (n.title + " " + toPlain(n.content)).toLowerCase().includes(query))
     .sort((a, b) => Number(b.pinned) - Number(a.pinned));
+
+  const filteredSections = isTrash
+    ? trashSections.filter((s) => s.name.toLowerCase().includes(query))
+    : [];
 
   const action = "row-action px-1.5 py-1 text-xs text-white/45";
   const chipClass =
     "flex shrink-0 items-center gap-2 whitespace-nowrap px-3.5 py-1.5 text-sm text-white/80";
+  const groupLabel = "px-4 pb-1 pt-2 text-xs uppercase tracking-wider text-white/35";
 
   return (
     <aside className="glass flex min-h-0 w-full flex-col overflow-hidden">
@@ -79,7 +91,7 @@ export default function Sidebar({
             {account}
           </span>
           {isTrash ? (
-            notes.length > 0 && (
+            trashCount > 0 && (
               <button
                 onClick={onEmptyTrash}
                 className="pill px-3 py-1.5 text-xs text-rose-200 hover:bg-white/15"
@@ -173,11 +185,46 @@ export default function Sidebar({
       </div>
 
       <ul className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-        {filtered.length === 0 && (
+        {filtered.length === 0 && filteredSections.length === 0 && (
           <li className="px-4 py-8 text-center text-sm text-white/40">
             {isTrash ? "Trash is empty" : "No pages"}
           </li>
         )}
+
+        {/* بخش‌های حذف‌شده (فقط تو Trash) */}
+        {filteredSections.length > 0 && <li className={groupLabel}>Sections</li>}
+        {filteredSections.map((s) => (
+          <li
+            key={`sec-${s.id}`}
+            className="glass-item group flex items-center justify-between gap-2 px-4 py-3"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                className="h-3 w-3 shrink-0 rounded-full"
+                style={{ background: s.color, boxShadow: `0 0 10px ${s.color}` }}
+              />
+              <span dir="auto" className="truncate text-sm font-medium">
+                {s.name}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center">
+              <button
+                onClick={() => onRestoreSection(s)}
+                className={`${action} hover:text-[var(--mint)]`}
+              >
+                Restore
+              </button>
+              <button
+                onClick={() => onDeleteSectionForever(s)}
+                className={`${action} hover:text-rose-300`}
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+
+        {filteredSections.length > 0 && filtered.length > 0 && <li className={groupLabel}>Pages</li>}
 
         {filtered.map((n) => (
           <li

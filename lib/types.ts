@@ -3,6 +3,7 @@ export type Section = {
   name: string;
   color: string;
   position: number;
+  deleted_at: number | null; // اگه null نباشه، تو سطل زباله‌ست
 };
 
 export type Note = {

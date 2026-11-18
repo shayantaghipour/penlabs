@@ -66,6 +66,7 @@ async function setup() {
   await addColumnIfMissing("notes", "deleted_at", "INTEGER");
   await addColumnIfMissing("notes", "user_id", "INTEGER");
   await addColumnIfMissing("sections", "user_id", "INTEGER");
+  await addColumnIfMissing("sections", "deleted_at", "INTEGER");
 }
 
 export function initDb() {

@@ -40,6 +40,45 @@ export async function PUT(request: Request, { params }: Ctx) {
   }
 }
 
+// انداختن تو سطل زباله یا بازیابی: { trashed: true | false }
+export async function PATCH(request: Request, { params }: Ctx) {
+  try {
+    await initDb();
+    const user = await getCurrentUser();
+    if (!user) return unauthorized();
+
+    const { id } = await params;
+    const sectionId = Number(id);
+    const body = await request.json().catch(() => ({}));
+
+    if (typeof body.trashed !== "boolean") {
+      return NextResponse.json({ error: "trashed must be true or false" }, { status: 400 });
+    }
+
+    if (body.trashed) {
+      // حداقل یه بخش فعال دیگه باید بمونه
+      const others = await db.execute({
+        sql: "SELECT COUNT(*) AS c FROM sections WHERE user_id = ? AND deleted_at IS NULL AND id != ?",
+        args: [user.id, sectionId],
+      });
+      if (Number(others.rows[0].c) < 1) {
+        return NextResponse.json({ error: "You can't delete the last section" }, { status: 400 });
+      }
+    }
+
+    const result = await db.execute({
+      sql: "UPDATE sections SET deleted_at = ? WHERE id = ? AND user_id = ?",
+      args: [body.trashed ? Date.now() : null, sectionId, user.id],
+    });
+    if (result.rowsAffected === 0) return notFound();
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return fail("PATCH /api/sections/[id] failed:", e);
+  }
+}
+
+// حذف همیشگی: فقط برای بخشی که تو سطل زباله‌ست
 export async function DELETE(_request: Request, { params }: Ctx) {
   try {
     await initDb();
@@ -49,18 +88,13 @@ export async function DELETE(_request: Request, { params }: Ctx) {
     const { id } = await params;
     const sectionId = Number(id);
 
-    const owned = await db.execute({
-      sql: "SELECT id FROM sections WHERE id = ? AND user_id = ?",
+    const row = await db.execute({
+      sql: "SELECT deleted_at FROM sections WHERE id = ? AND user_id = ?",
       args: [sectionId, user.id],
     });
-    if (owned.rows.length === 0) return notFound();
-
-    const count = await db.execute({
-      sql: "SELECT COUNT(*) AS c FROM sections WHERE user_id = ?",
-      args: [user.id],
-    });
-    if (Number(count.rows[0].c) <= 1) {
-      return NextResponse.json({ error: "You can't delete the last section" }, { status: 400 });
+    if (row.rows.length === 0) return notFound();
+    if (row.rows[0].deleted_at === null) {
+      return NextResponse.json({ error: "Move the section to the trash first" }, { status: 400 });
     }
 
     await db.execute({
