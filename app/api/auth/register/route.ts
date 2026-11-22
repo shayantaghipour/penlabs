@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, initDb } from "@/lib/db";
 import { createSession, hashPassword } from "@/lib/auth";
+import { checkLimit, clientIp, recordHit, waitMessage } from "@/lib/rate-limit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,6 +12,18 @@ function error(message: string, status: number) {
 export async function POST(request: Request) {
   try {
     await initDb();
+
+    // هر تلاش ثبت‌نام (موفق یا ناموفق) از یه IP شمرده می‌شه
+    const rules = [{ key: `register:ip:${clientIp(request)}`, max: 10, windowMs: 60 * 60_000 }];
+    const limit = await checkLimit(rules);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: waitMessage(limit.retryAfter) },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+      );
+    }
+    await recordHit(rules);
+
     const body = await request.json().catch(() => ({}));
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
