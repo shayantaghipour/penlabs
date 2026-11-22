@@ -1,6 +1,8 @@
 <div align="center">
 
-# ✒️ PenLabs
+<img src="docs\logo.png" alt="PenLabs" width="120" />
+
+# PenLabs
 
 **A calm, glassy notes app. Write beautifully, organize in sections, take your notes anywhere.**
 
@@ -31,19 +33,19 @@
 - 🗑️ **Trash with restore.** Deleted pages and whole sections go to the trash first, and you can restore or delete them permanently from there.
 - 📌 **Pin, search, shortcuts.** Pin important pages, search instantly, and move fast with the keyboard.
 - 📱 **Responsive.** A single-column flow on phones, two columns on tablets and three on desktop.
-- 🔐 **Accounts.** Email and password sign-in, with every note and section private to its owner.
+- 🔐 **Accounts.** Email and password sign-in, with every note and section private to its owner and sign-in attempts rate limited.
 
 ## 🧰 Tech stack
 
-| Layer | Technology |
-|---|---|
-| Framework | [Next.js](https://nextjs.org) (App Router, Route Handlers) |
-| UI | React, TypeScript, [Tailwind CSS](https://tailwindcss.com) |
-| Editor | [Tiptap](https://tiptap.dev) |
-| Database | [libSQL](https://github.com/tursodatabase/libsql): a local SQLite file in development, [Turso](https://turso.tech) in production |
-| Auth | Email and password, `scrypt` hashing, hashed session tokens in `httpOnly` cookies |
-| Export | [`docx`](https://github.com/dolanmiu/docx) for Word, the browser print dialog for PDF |
-| Hosting | [Vercel](https://vercel.com) |
+| Layer     | Technology                                                                                                                       |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Framework | [Next.js](https://nextjs.org) (App Router, Route Handlers)                                                                       |
+| UI        | React, TypeScript, [Tailwind CSS](https://tailwindcss.com)                                                                       |
+| Editor    | [Tiptap](https://tiptap.dev)                                                                                                     |
+| Database  | [libSQL](https://github.com/tursodatabase/libsql): a local SQLite file in development, [Turso](https://turso.tech) in production |
+| Auth      | Email and password, `scrypt` hashing, hashed session tokens in `httpOnly` cookies                                                |
+| Export    | [`docx`](https://github.com/dolanmiu/docx) for Word, the browser print dialog for PDF                                            |
+| Hosting   | [Vercel](https://vercel.com)                                                                                                     |
 
 ## 🚀 Getting started
 
@@ -69,10 +71,10 @@ In development PenLabs stores everything in a local `local.db` file, created aut
 
 Create a `.env.local` file in the project root. Both variables are **optional locally** and **required in production**.
 
-| Variable | Description |
-|---|---|
+| Variable             | Description                                        |
+| -------------------- | -------------------------------------------------- |
 | `TURSO_DATABASE_URL` | Your Turso database URL, starting with `libsql://` |
-| `TURSO_AUTH_TOKEN` | A Turso auth token for that database |
+| `TURSO_AUTH_TOKEN`   | A Turso auth token for that database               |
 
 ```env
 TURSO_DATABASE_URL=libsql://your-database-name.turso.io
@@ -96,18 +98,18 @@ Then add your computer's local IP to `allowedDevOrigins` in `next.config.ts` and
 1. Create a database on [Turso](https://turso.tech) and generate a token.
 2. Push this repository to GitHub.
 3. Import it on [Vercel](https://vercel.com/new).
-4. Under **Environment Variables**, add `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. The variable name goes in the *Key* field and the value goes in the *Value* field.
+4. Under **Environment Variables**, add `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. The variable name goes in the _Key_ field and the value goes in the _Value_ field.
 5. Deploy. Tables are created automatically on the first request.
 
 For the best latency, keep your Vercel Function Region close to your Turso database region.
 
 ## ⌨️ Keyboard shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Ctrl` / `⌘` + `K` | Focus search |
-| `Alt` + `N` | New page |
-| `Esc` | Close menus and dialogs |
+| Shortcut           | Action                  |
+| ------------------ | ----------------------- |
+| `Ctrl` / `⌘` + `K` | Focus search            |
+| `Alt` + `N`        | New page                |
+| `Esc`              | Close menus and dialogs |
 
 Shortcuts work with non-Latin keyboard layouts too, such as the Persian layout.
 
@@ -116,7 +118,7 @@ Shortcuts work with non-Latin keyboard layouts too, such as the Persian layout.
 ```
 penlabs/
 ├─ app/
-│  ├─ layout.tsx            Root layout, fonts and theme bootstrap
+│  ├─ layout.tsx            Root layout, fonts, metadata and theme bootstrap
 │  ├─ page.tsx              The app shell (sections, pages, editor)
 │  ├─ globals.css           Glass design system, themes and editor styles
 │  └─ api/
@@ -136,6 +138,7 @@ penlabs/
 └─ lib/
    ├─ db.ts                 libSQL client and schema migrations
    ├─ auth.ts               Password hashing and sessions
+   ├─ rate-limit.ts         Database-backed rate limiting for sign-in and sign-up
    ├─ export.ts             Export logic
    ├─ text.ts               Plain-text and HTML helpers
    └─ types.ts              Shared types
@@ -146,11 +149,12 @@ penlabs/
 - Passwords are hashed with `scrypt` and a random salt. Plain-text passwords are never stored.
 - Session tokens are random, and only their SHA-256 hash is stored in the database. Cookies are `httpOnly` and `sameSite=lax`, and `secure` in production.
 - Every notes and sections query is scoped to the signed-in user, so one account can't read or change another's data.
-- Known gaps: there is no sign-in rate limiting, no email verification and no password reset yet. See the roadmap.
+- Sign-in is limited to 5 failed attempts per email and 30 per IP address every 15 minutes, and sign-up to 10 attempts per IP address per hour. Counters live in the database, so they work on serverless hosting.
+- Known gaps: there is no email verification and no password reset yet. See the roadmap.
 
 ## 🛣️ Roadmap
 
-- [ ] Sign-in rate limiting
+- [x] Sign-in rate limiting
 - [ ] Guest mode, with notes moved into the account after sign-up
 - [ ] Stars (favorites) for signed-in users
 - [ ] Password reset and email verification

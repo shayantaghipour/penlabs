@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Vazirmatn } from "next/font/google";
 import "./globals.css";
 
@@ -18,8 +18,27 @@ const vazir = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "PenLabs",
-  description: "Glass-style notes",
+  metadataBase: new URL("https://penlabs.vercel.app"),
+  title: {
+    default: "PenLabs — Glass notes",
+    template: "%s · PenLabs",
+  },
+  description:
+    "A calm, glassy notes app. Write in sections, export to TXT, PDF and Word, and take your notes anywhere.",
+  applicationName: "PenLabs",
+  openGraph: {
+    title: "PenLabs — Glass notes",
+    description: "A calm, glassy notes app. Write in sections and take your notes anywhere.",
+    siteName: "PenLabs",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eef1fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#090914" },
+  ],
 };
 
 // تم ذخیره‌شده رو قبل از رندر اعمال می‌کنه. پیش‌فرض: روشن
