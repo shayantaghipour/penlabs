@@ -60,6 +60,14 @@ async function setup() {
     )
   `);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key TEXT PRIMARY KEY,
+      count INTEGER NOT NULL,
+      window_start INTEGER NOT NULL
+    )
+  `);
+
   // مهاجرت‌ها: ستون‌های جدید به جدول‌های قدیمی اضافه می‌شن
   await addColumnIfMissing("notes", "section_id", "INTEGER");
   await addColumnIfMissing("notes", "pinned", "INTEGER NOT NULL DEFAULT 0");
