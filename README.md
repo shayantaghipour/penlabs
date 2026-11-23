@@ -1,9 +1,6 @@
 <div align="center">
 
 <img src="docs/logo.png" alt="PenLabs" width="120" />
-<img src="docs/desktop-dark.png" alt="PenLabs dark" width="49%" />
-<img src="docs/desktop-light.png" alt="PenLabs light" width="49%" />
-<img src="docs/demo.gif" alt="Glass tab lens" width="320" />
 
 # PenLabs
 
@@ -17,6 +14,26 @@
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)
 
 </div>
+
+## 📸 Preview
+
+<p align="center">
+  <img src="docs/desktop-dark.png" alt="PenLabs in dark mode" width="49%" />
+  <img src="docs/desktop-light.png" alt="PenLabs in light mode" width="49%" />
+</p>
+
+<p align="center">
+  <img src="docs/export-menu.png" alt="Export menu" width="49%" />
+  <img src="docs/persian.png" alt="Persian note with right-to-left text" width="49%" />
+</p>
+
+<p align="center">
+  <img src="docs/mobile-list.png" alt="Mobile page list with section chips" width="24%" />
+  <img src="docs/mobile-editor.png" alt="Mobile editor" width="24%" />
+  <img src="docs/demo.gif" alt="Glass tab lens: press, hold and slide to switch sections" width="24%" />
+</p>
+
+<p align="center"><sub>Light and dark themes, export menu, right-to-left writing, and the press-and-hold glass tab lens on mobile.</sub></p>
 
 ---
 
