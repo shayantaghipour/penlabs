@@ -1,6 +1,9 @@
 <div align="center">
 
 <img src="docs/logo.png" alt="PenLabs" width="120" />
+<img src="docs/desktop-dark.png" alt="PenLabs dark" width="49%" />
+<img src="docs/desktop-light.png" alt="PenLabs light" width="49%" />
+<img src="docs/demo.gif" alt="Glass tab lens" width="320" />
 
 # PenLabs
 
@@ -15,11 +18,6 @@
 
 </div>
 
-<!--
-  Add a screenshot or GIF here once you have one, for example:
-  <p align="center"><img src="docs/screenshot.png" alt="PenLabs" width="860" /></p>
--->
-
 ---
 
 ## ✨ Highlights
@@ -33,6 +31,7 @@
 - 🗑️ **Trash with restore.** Deleted pages and whole sections go to the trash first, and you can restore or delete them permanently from there.
 - 📌 **Pin, search, shortcuts.** Pin important pages, search instantly, and move fast with the keyboard.
 - 📱 **Responsive.** A single-column flow on phones, two columns on tablets and three on desktop.
+- 🙋 **Guest mode.** Start writing without an account. Guests can keep up to 5 pages in their browser, and those pages move into the account when they sign in.
 - 🔐 **Accounts.** Email and password sign-in, with every note and section private to its owner and sign-in attempts rate limited.
 
 ## 🧰 Tech stack
@@ -139,6 +138,7 @@ penlabs/
    ├─ db.ts                 libSQL client and schema migrations
    ├─ auth.ts               Password hashing and sessions
    ├─ rate-limit.ts         Database-backed rate limiting for sign-in and sign-up
+   ├─ guest.ts              Guest mode storage (browser only) and the 5-page limit
    ├─ export.ts             Export logic
    ├─ text.ts               Plain-text and HTML helpers
    └─ types.ts              Shared types
@@ -155,7 +155,7 @@ penlabs/
 ## 🛣️ Roadmap
 
 - [x] Sign-in rate limiting
-- [ ] Guest mode, with notes moved into the account after sign-up
+- [x] Guest mode, with notes moved into the account after sign-up
 - [ ] Stars (favorites) for signed-in users
 - [ ] Password reset and email verification
 - [ ] Custom domain
