@@ -6,12 +6,75 @@ import Sidebar from "@/components/Sidebar";
 import NoteEditor from "@/components/NoteEditor";
 import AuthModal, { type AuthUser } from "@/components/AuthModal";
 import AccountButton from "@/components/AccountButton";
+import { toPlain } from "@/lib/text";
+import {
+  GUEST_LIMIT,
+  GUEST_SECTION,
+  GUEST_SECTION_ID,
+  loadGuestNotes,
+  newGuestId,
+  saveGuestNotes,
+  takeGuestNotes,
+} from "@/lib/guest";
 import type { Note, Section } from "@/lib/types";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 const PALETTE = ["#5eead4", "#8b8cff", "#f9a8d4", "#fcd34d", "#7dd3fc", "#fda4af"];
 
 type SaveStatus = "saved" | "saving" | "error";
+
+// صفحه‌های مهمان رو به حساب منتقل می‌کنه. اونایی که منتقل نشن، تو مرورگر می‌مونن
+async function importGuestPages(sectionId: number): Promise<{ created: Note[]; failed: number }> {
+  const pending = takeGuestNotes();
+  if (pending.length === 0) return { created: [], failed: 0 };
+
+  const created: Note[] = [];
+  const failed: Note[] = [];
+
+  // قدیمی‌ترین اول، تا جدیدترین صفحه آخر ساخته بشه و بالای لیست بیاد
+  for (const g of [...pending].sort((a, b) => a.updated_at - b.updated_at)) {
+    if (!g.title.trim() && !toPlain(g.content)) continue; // صفحه خالی ارزش انتقال نداره
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ section_id: sectionId, title: g.title, content: g.content }),
+      });
+      if (!res.ok) throw new Error("import failed");
+      created.push((await res.json()) as Note);
+    } catch {
+      failed.push(g);
+    }
+  }
+
+  if (failed.length > 0) saveGuestNotes(failed);
+  return { created, failed: failed.length };
+}
+
+function GuestBanner({
+  used,
+  saveFailed,
+  onSignIn,
+}: {
+  used: number;
+  saveFailed: boolean;
+  onSignIn: () => void;
+}) {
+  return (
+    <div className="glass shrink-0 px-4 py-3" style={{ borderRadius: 22 }}>
+      <p className="text-sm font-medium text-white/85">Guest mode</p>
+      <p className="mt-0.5 text-xs text-white/55">
+        {saveFailed
+          ? "This browser blocked saving, so your pages will be lost when you close the tab."
+          : "Your pages are saved only in this browser."}{" "}
+        {used} of {GUEST_LIMIT} pages used.
+      </p>
+      <button onClick={onSignIn} className="btn-accent mt-2 px-4 py-1.5 text-xs">
+        Sign in to keep them
+      </button>
+    </div>
+  );
+}
 
 export default function Home() {
   const [sections, setSections] = useState<Section[]>([]);
@@ -25,11 +88,18 @@ export default function Home() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [guestReady, setGuestReady] = useState(false);
+  const [guestSaveFailed, setGuestSaveFailed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const notesRef = useRef<Note[]>([]);
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const searchRef = useRef<HTMLInputElement>(null);
   const createNoteRef = useRef<() => void>(() => {});
+  const importStarted = useRef(false);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isGuest = authChecked && !user;
 
   useEffect(() => {
     notesRef.current = notes;
@@ -39,40 +109,113 @@ export default function Home() {
     createNoteRef.current = createNote;
   });
 
-  // کاربر فعلی (null یعنی مهمان)
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => setUser(d.user ?? null))
-      .catch(() => {})
-      .finally(() => setAuthChecked(true));
-  }, []);
+  function notify(text: string) {
+    setNotice(text);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 4500);
+  }
 
+  // پیام می‌ده و پنجره ورود رو باز می‌کنه
+  function requireAccount(text: string) {
+    notify(text);
+    setAuthOpen(true);
+  }
+
+  // بارگذاری اولیه: کاربر لاگین‌شده از سرور، مهمان از مرورگر
   useEffect(() => {
-    Promise.all([
-      fetch("/api/sections").then((r) => r.json()),
-      fetch("/api/notes").then((r) => r.json()),
-    ])
-      .then(([secs, nts]) => {
+    let cancelled = false;
+
+    async function init() {
+      let me: AuthUser | null = null;
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        me = data.user ?? null;
+      } catch {
+        me = null;
+      }
+      if (cancelled) return;
+
+      if (!me) {
+        const guestNotes = loadGuestNotes();
+        setUser(null);
+        setSections([GUEST_SECTION]);
+        setNotes(guestNotes);
+        setActiveSectionId(GUEST_SECTION_ID);
+        setActiveId(guestNotes[0]?.id ?? null);
+        setGuestReady(true);
+        setAuthChecked(true);
+        setLoading(false);
+        return;
+      }
+
+      setUser(me);
+      try {
+        const [secs, nts] = await Promise.all([
+          fetch("/api/sections").then((r) => r.json()),
+          fetch("/api/notes").then((r) => r.json()),
+        ]);
+        if (cancelled) return;
+
         if (!Array.isArray(secs) || !Array.isArray(nts)) {
-          // مهمان (401) خطا نیست؛ فقط داده‌ای برای نمایش نداره
-          if (secs?.error !== "Sign in required") console.error("API error:", secs, nts);
+          console.error("API error:", JSON.stringify(secs), JSON.stringify(nts));
           return;
         }
-        setSections(secs as Section[]);
-        setNotes(nts as Note[]);
-        const firstLive = (secs as Section[]).find((s) => s.deleted_at === null);
+
+        const sectionsList = secs as Section[];
+        let notesList = nts as Note[];
+        const firstLive = sectionsList.find((s) => s.deleted_at === null);
+
+        // انتقال صفحه‌های مهمان به اولین بخش حساب
+        if (firstLive && !importStarted.current) {
+          importStarted.current = true;
+          const { created, failed } = await importGuestPages(firstLive.id);
+          if (cancelled) return;
+
+          if (created.length > 0) {
+            notesList = [...[...created].reverse(), ...notesList];
+          }
+          const parts: string[] = [];
+          if (created.length > 0) {
+            parts.push(`Moved ${created.length} guest page${created.length === 1 ? "" : "s"} to your account.`);
+          }
+          if (failed > 0) {
+            parts.push(
+              `${failed} guest page${failed === 1 ? "" : "s"} couldn't be moved and ${failed === 1 ? "is" : "are"} still saved on this device.`
+            );
+          }
+          if (parts.length > 0) notify(parts.join(" "));
+        }
+
+        setSections(sectionsList);
+        setNotes(notesList);
         if (firstLive) {
           setActiveSectionId(firstLive.id);
           setActiveId(
-            (nts as Note[]).find((n) => n.section_id === firstLive.id && n.deleted_at === null)
-              ?.id ?? null
+            notesList.find((n) => n.section_id === firstLive.id && n.deleted_at === null)?.id ?? null
           );
         }
-      })
-      .catch((e) => console.error("Load failed:", e))
-      .finally(() => setLoading(false));
+      } catch (e) {
+        console.error("Load failed:", e);
+      } finally {
+        if (!cancelled) {
+          setAuthChecked(true);
+          setLoading(false);
+        }
+      }
+    }
+
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  // ذخیره خودکار صفحه‌های مهمان تو مرورگر
+  useEffect(() => {
+    if (!isGuest || !guestReady) return;
+    setGuestSaveFailed(!saveGuestNotes(notes));
+  }, [notes, isGuest, guestReady]);
 
   // میانبرها (با e.code کار می‌کنه، پس با کیبورد فارسی هم جواب می‌ده)
   useEffect(() => {
@@ -130,11 +273,19 @@ export default function Home() {
   }
 
   function selectTrash() {
+    if (isGuest) {
+      requireAccount("Sign in to use the trash.");
+      return;
+    }
     setView("trash");
     setMobileView("list");
   }
 
   async function createSection() {
+    if (isGuest) {
+      requireAccount("Sign in to create more sections.");
+      return;
+    }
     const name = prompt("Section name:")?.trim();
     if (!name) return;
     const color = PALETTE[liveSections.length % PALETTE.length];
@@ -153,6 +304,10 @@ export default function Home() {
   }
 
   async function renameSection(section: Section) {
+    if (isGuest) {
+      requireAccount("Sign in to manage sections.");
+      return;
+    }
     const name = prompt("Rename section:", section.name)?.trim();
     if (!name || name === section.name) return;
     const res = await fetch(`/api/sections/${section.id}`, {
@@ -166,6 +321,10 @@ export default function Home() {
 
   // حذف بخش = رفتن به سطل زباله (با همه صفحه‌هاش)
   async function deleteSection(section: Section) {
+    if (isGuest) {
+      requireAccount("Sign in to manage sections.");
+      return;
+    }
     if (liveSections.length <= 1) {
       alert("You can't delete the last section.");
       return;
@@ -232,6 +391,27 @@ export default function Home() {
 
   async function createNote() {
     if (activeSectionId === null) return;
+
+    if (isGuest) {
+      if (notes.length >= GUEST_LIMIT) {
+        requireAccount(`Guests can keep up to ${GUEST_LIMIT} pages. Sign in to add more.`);
+        return;
+      }
+      const note: Note = {
+        id: newGuestId(notes),
+        section_id: GUEST_SECTION_ID,
+        title: "",
+        content: "",
+        updated_at: Date.now(),
+        pinned: false,
+        deleted_at: null,
+      };
+      setNotes((prev) => [note, ...prev]);
+      setView("notes");
+      openNote(note.id);
+      return;
+    }
+
     const res = await fetch("/api/notes", {
       method: "POST",
       headers: JSON_HEADERS,
@@ -245,6 +425,14 @@ export default function Home() {
   }
 
   function updateNote(id: number, patch: { title?: string; content?: string }) {
+    // مهمان: فقط تو حافظه عوض می‌شه و افکت بالا تو مرورگر ذخیره‌اش می‌کنه
+    if (isGuest) {
+      setNotes((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, ...patch, updated_at: Date.now() } : n))
+      );
+      return;
+    }
+
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
     setStatus("saving");
 
@@ -283,6 +471,10 @@ export default function Home() {
   }
 
   async function togglePin(note: Note) {
+    if (isGuest) {
+      requireAccount("Sign in to pin pages.");
+      return;
+    }
     const next = !note.pinned;
     setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, pinned: next } : n)));
     const ok = await patchNote(note.id, { pinned: next });
@@ -292,6 +484,17 @@ export default function Home() {
   }
 
   async function trashNote(note: Note) {
+    // مهمان سطل زباله نداره: حذف همیشگی با تأیید
+    if (isGuest) {
+      if (!confirm("Delete this page? Guests don't have a trash, so this can't be undone.")) return;
+      setNotes((prev) => prev.filter((n) => n.id !== note.id));
+      if (activeId === note.id) {
+        setActiveId(sectionNotes.find((n) => n.id !== note.id)?.id ?? null);
+        setMobileView("list");
+      }
+      return;
+    }
+
     const ok = await patchNote(note.id, { trashed: true });
     if (!ok) return;
     setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, deleted_at: Date.now() } : n)));
@@ -348,36 +551,45 @@ export default function Home() {
         />
 
         <div
-          className={`min-h-0 w-full md:w-80 md:shrink-0 ${
+          className={`min-h-0 w-full flex-col gap-2 md:w-80 md:shrink-0 ${
             mobileView === "editor" ? "hidden md:flex" : "flex"
           }`}
         >
-          <Sidebar
-            title={view === "trash" ? "Trash" : (activeSection?.name ?? "Pages")}
-            mode={view}
-            notes={view === "trash" ? trashNotes : sectionNotes}
-            activeId={activeId}
-            searchRef={searchRef}
-            sections={liveSections}
-            trashSections={trashSections}
-            activeSectionId={activeSectionId}
-            trashCount={trashCount}
-            onSelectSection={selectSection}
-            onSelectTrash={selectTrash}
-            onCreateSection={createSection}
-            onRenameSection={renameSection}
-            onDeleteSection={deleteSection}
-            onRestoreSection={restoreSection}
-            onDeleteSectionForever={deleteSectionForever}
-            onSelect={openNote}
-            onCreate={createNote}
-            onTogglePin={togglePin}
-            onTrash={trashNote}
-            onRestore={restoreNote}
-            onDeleteForever={deleteForever}
-            onEmptyTrash={emptyTrash}
-            account={account}
-          />
+          {isGuest && (
+            <GuestBanner
+              used={notes.length}
+              saveFailed={guestSaveFailed}
+              onSignIn={() => setAuthOpen(true)}
+            />
+          )}
+          <div className="flex min-h-0 flex-1">
+            <Sidebar
+              title={view === "trash" ? "Trash" : (activeSection?.name ?? "Pages")}
+              mode={view}
+              notes={view === "trash" ? trashNotes : sectionNotes}
+              activeId={activeId}
+              searchRef={searchRef}
+              sections={liveSections}
+              trashSections={trashSections}
+              activeSectionId={activeSectionId}
+              trashCount={trashCount}
+              onSelectSection={selectSection}
+              onSelectTrash={selectTrash}
+              onCreateSection={createSection}
+              onRenameSection={renameSection}
+              onDeleteSection={deleteSection}
+              onRestoreSection={restoreSection}
+              onDeleteSectionForever={deleteSectionForever}
+              onSelect={openNote}
+              onCreate={createNote}
+              onTogglePin={togglePin}
+              onTrash={trashNote}
+              onRestore={restoreNote}
+              onDeleteForever={deleteForever}
+              onEmptyTrash={emptyTrash}
+              account={account}
+            />
+          </div>
         </div>
 
         <section
@@ -398,16 +610,6 @@ export default function Home() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             {loading || !authChecked ? (
               <p className="p-8 text-white/50">Loading...</p>
-            ) : !user ? (
-              <div className="flex h-full flex-col items-center justify-center gap-4 px-10 text-center">
-                <p className="text-lg font-semibold text-white/85">Welcome to PenLabs</p>
-                <p className="max-w-xs text-sm text-white/50">
-                  Sign in to create notes, organize them in sections and sync them across your devices.
-                </p>
-                <button onClick={() => setAuthOpen(true)} className="btn-accent px-6 py-2 text-sm">
-                  Sign in
-                </button>
-              </div>
             ) : view === "trash" ? (
               <div className="flex h-full items-center justify-center px-10 text-center text-white/40">
                 Items in the trash can&apos;t be edited. Restore them to keep working.
@@ -415,12 +617,17 @@ export default function Home() {
             ) : active ? (
               <NoteEditor
                 note={active}
-                status={status}
+                status={isGuest && guestSaveFailed ? "error" : status}
                 onChange={(patch) => updateNote(active.id, patch)}
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-white/40">
-                Create a page to get started
+              <div className="flex h-full flex-col items-center justify-center gap-4 px-10 text-center">
+                <p className="text-white/45">
+                  {isGuest ? "Write your first page. No account needed." : "Create a page to get started"}
+                </p>
+                <button onClick={createNote} className="btn-accent px-5 py-2 text-sm">
+                  + New page
+                </button>
               </div>
             )}
           </div>
@@ -435,6 +642,23 @@ export default function Home() {
           window.location.reload();
         }}
       />
+
+      {notice && (
+        <div
+          role="status"
+          className="menu-glass max-w-[90vw]"
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: 24,
+            transform: "translateX(-50%)",
+            zIndex: 1100,
+            padding: "10px 18px",
+          }}
+        >
+          <p className="text-sm text-white/85">{notice}</p>
+        </div>
+      )}
     </>
   );
 }
