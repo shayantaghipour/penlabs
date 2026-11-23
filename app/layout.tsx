@@ -26,6 +26,9 @@ export const metadata: Metadata = {
   description:
     "A calm, glassy notes app. Write in sections, export to TXT, PDF and Word, and take your notes anywhere.",
   applicationName: "PenLabs",
+  icons: {
+    icon: "/icon.png",
+  },
   openGraph: {
     title: "PenLabs — Glass notes",
     description: "A calm, glassy notes app. Write in sections and take your notes anywhere.",
